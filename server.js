@@ -27,7 +27,9 @@ app.post('/api/contact', async (req, res) => {
     try {
         // Configuração do "Carteiro" (Nodemailer)
         const transporter = nodemailer.createTransport({
-            service: 'gmail', // Mude para 'hotmail' ou 'outlook' se for o caso
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true,
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
