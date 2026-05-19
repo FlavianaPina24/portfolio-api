@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const app = express();
 
@@ -25,28 +25,20 @@ app.post('/api/contact', async (req, res) => {
     }
 
     try {
-        // Configuração do "Carteiro" (Nodemailer)
-        const transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 587,
-            secure: false, // O false indica que usaremos STARTTLS (Padrão mais amigável para Nuvem)
-            requireTLS: true,
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            }
-        });
+        // Plano B: Enviando e-mail via API HTTP (Resend) para burlar o bloqueio de portas
+        const resend = new Resend(process.env.RESEND_API_KEY);
 
-        // O conteúdo do e-mail
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: process.env.EMAIL_USER, // Envia para você mesma
+        const { error } = await resend.emails.send({
+            from: 'onboarding@resend.dev', // E-mail padrão de teste do Resend
+            to: process.env.EMAIL_USER, // O seu e-mail (precisa ser o mesmo cadastrado no Resend)
             subject: `[Portfólio] Nova mensagem de ${name}`,
             text: `Nome: ${name}\nE-mail: ${email}\n\nMensagem:\n${message}`
-        };
+        });
 
-        // Dispara o e-mail
-        await transporter.sendMail(mailOptions);
+        if (error) {
+            console.error('Erro na API do Resend:', error);
+            return res.status(500).json({ erro: 'Falha interna no servidor de e-mail.' });
+        }
 
         console.log(`[SUCESSO] E-mail enviado com sucesso de: ${name} (${email})`);
         return res.status(200).json({ sucesso: true, mensagem: 'E-mail enviado com sucesso!' });
