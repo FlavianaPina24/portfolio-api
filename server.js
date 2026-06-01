@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { Resend } = require('resend');
 const rateLimit = require('express-rate-limit');
+const mongoose = require('mongoose');
 
 const app = express();
 
@@ -18,6 +19,21 @@ const apiLimiter = rateLimit({
     standardHeaders: true, // Retorna informações de limite nos headers (RateLimit-*)
     legacyHeaders: false, // Desabilita os headers antigos X-RateLimit-*
 });
+
+// 1.8 Conexão com o Banco de Dados (MongoDB)
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log('📦 Conectado ao MongoDB com sucesso!'))
+    .catch(err => console.error('❌ Erro ao conectar no MongoDB:', err));
+
+// 1.9 Modelo de Dados (Contrato do Banco)
+const testimonialSchema = new mongoose.Schema({
+    name: String,
+    role: String,
+    message: String,
+    status: { type: String, default: 'Pendente' } // Segurança: Nasce pendente para moderação
+}, { timestamps: true });
+
+const Testimonial = mongoose.model('Testimonial', testimonialSchema);
 
 // 2. Rota de Boas-Vindas
 app.get('/', (req, res) => {
@@ -80,6 +96,9 @@ app.post('/api/testimonial', apiLimiter, async (req, res) => {
     }
 
     try {
+        // Salva o depoimento no Banco de Dados com status "Pendente"
+        await Testimonial.create({ name, role, message });
+
         const resend = new Resend(process.env.RESEND_API_KEY);
         const { error } = await resend.emails.send({
             from: 'onboarding@resend.dev',
@@ -94,6 +113,16 @@ app.post('/api/testimonial', apiLimiter, async (req, res) => {
         return res.status(200).json({ sucesso: true });
     } catch (error) {
         return res.status(500).json({ erro: 'Falha interna no servidor.' });
+    }
+});
+
+// 4.5 Rota para buscar os depoimentos aprovados (O Site vai ler daqui!)
+app.get('/api/testimonial', async (req, res) => {
+    try {
+        const depoimentos = await Testimonial.find({ status: 'Aprovado' }).sort({ createdAt: -1 }); // Retorna os mais recentes primeiro
+        return res.status(200).json(depoimentos);
+    } catch (error) {
+        return res.status(500).json({ erro: 'Falha ao buscar depoimentos no banco de dados.' });
     }
 });
 
