@@ -55,7 +55,39 @@ app.post('/api/contact', async (req, res) => {
     }
 });
 
-// 4. Ligar o Servidor
+// 4. Rota de Depoimentos (Feedback)
+app.post('/api/testimonial', async (req, res) => {
+    const { name, role, message, website } = req.body;
+
+    // Defesa Cibernética: Pote de Mel (Honeypot) também nos depoimentos!
+    if (website) {
+        console.log(`🛡️ [DEVSECOPS] Bot de spam bloqueado no depoimento! Nome tentado: ${name}`);
+        return res.status(200).json({ sucesso: true });
+    }
+
+    if (!name || !role || !message) {
+        return res.status(400).json({ erro: 'Todos os campos são obrigatórios!' });
+    }
+
+    try {
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        const { error } = await resend.emails.send({
+            from: 'onboarding@resend.dev',
+            to: process.env.EMAIL_USER,
+            subject: `[Portfólio] Novo Depoimento de ${name}`,
+            text: `Nome: ${name}\nCargo: ${role}\n\nDepoimento:\n${message}`
+        });
+
+        if (error) {
+            return res.status(500).json({ erro: 'Falha interna no servidor de e-mail.' });
+        }
+        return res.status(200).json({ sucesso: true });
+    } catch (error) {
+        return res.status(500).json({ erro: 'Falha interna no servidor.' });
+    }
+});
+
+// 5. Ligar o Servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`✅ Servidor rodando lindamente na porta ${PORT}\nAcesse: http://localhost:${PORT}`);
