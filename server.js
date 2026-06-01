@@ -16,7 +16,14 @@ app.get('/', (req, res) => {
 
 // 3. Rota de Contato
 app.post('/api/contact', async (req, res) => {
-    const { name, email, message } = req.body;
+    const { name, email, message, website } = req.body;
+
+    // Defesa Cibernética: Honeypot (Pote de Mel)
+    if (website) {
+        console.log(`🛡️ [DEVSECOPS] Bot de spam detectado e bloqueado silenciosamente! Nome tentado: ${name}`);
+        // Retornamos 200 (Sucesso) para enganar o bot, fazendo ele achar que o spam funcionou, mas NENHUM e-mail é enviado.
+        return res.status(200).json({ sucesso: true, mensagem: 'E-mail enviado com sucesso!' });
+    }
 
     // Regra de Negócio / Validação QA (Sad Path)
     if (!name || !email || !message) {
