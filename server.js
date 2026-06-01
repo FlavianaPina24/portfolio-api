@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { Resend } = require('resend');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 
@@ -9,13 +10,22 @@ const app = express();
 app.use(cors()); // Permite que o front-end converse com a API
 app.use(express.json()); // Ensina a API a entender payloads JSON
 
+// 1.5 Defesa Cibernética: Rate Limiter (Escudo Anti-DDoS e Anti-Spam)
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // Janela de 15 minutos
+    max: 3, // Limita cada IP a 3 envios por janela (15 min)
+    message: { erro: 'Muitas tentativas de envio deste IP. Por favor, aguarde 15 minutos antes de tentar novamente.' },
+    standardHeaders: true, // Retorna informações de limite nos headers (RateLimit-*)
+    legacyHeaders: false, // Desabilita os headers antigos X-RateLimit-*
+});
+
 // 2. Rota de Boas-Vindas
 app.get('/', (req, res) => {
     res.send('API do Portfólio da Flaviana está ONLINE! 🚀');
 });
 
 // 3. Rota de Contato
-app.post('/api/contact', async (req, res) => {
+app.post('/api/contact', apiLimiter, async (req, res) => {
     const { name, email, message, website } = req.body;
 
     // Defesa Cibernética: Honeypot (Pote de Mel)
@@ -56,7 +66,7 @@ app.post('/api/contact', async (req, res) => {
 });
 
 // 4. Rota de Depoimentos (Feedback)
-app.post('/api/testimonial', async (req, res) => {
+app.post('/api/testimonial', apiLimiter, async (req, res) => {
     const { name, role, message, website } = req.body;
 
     // Defesa Cibernética: Pote de Mel (Honeypot) também nos depoimentos!
