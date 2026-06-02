@@ -35,6 +35,16 @@ const testimonialSchema = new mongoose.Schema({
 
 const Testimonial = mongoose.model('Testimonial', testimonialSchema);
 
+// 1.10 Modelo de Dados para Contatos (CRM/Backup)
+const contactSchema = new mongoose.Schema({
+    name: String,
+    email: String,
+    message: String,
+    status: { type: String, default: 'Não Lido' } // Controle interno para você saber se já respondeu a pessoa
+}, { timestamps: true });
+
+const Contact = mongoose.model('Contact', contactSchema);
+
 // 2. Rota de Boas-Vindas
 app.get('/', (req, res) => {
     res.send('API do Portfólio da Flaviana está ONLINE! 🚀');
@@ -58,6 +68,9 @@ app.post('/api/contact', apiLimiter, async (req, res) => {
     }
 
     try {
+        // NOVO: Salva o contato no Banco de Dados (Backup e Histórico CRM)
+        await Contact.create({ name, email, message });
+
         // Plano B: Enviando e-mail via API HTTP (Resend) para burlar o bloqueio de portas
         const resend = new Resend(process.env.RESEND_API_KEY);
 
