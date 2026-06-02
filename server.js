@@ -50,6 +50,11 @@ app.get('/', (req, res) => {
     res.send('API do Portfólio da Flaviana está ONLINE! 🚀');
 });
 
+// 2.5 Rota de Health Check (Monitoramento de Saúde para o Front-end)
+app.get('/api/status', (req, res) => {
+    res.status(200).json({ status: 'Online', message: 'API Operacional' });
+});
+
 // 3. Rota de Contato
 app.post('/api/contact', apiLimiter, async (req, res) => {
     const { name, email, message, website } = req.body;
