@@ -11,6 +11,12 @@ const app = express();
 app.use(cors()); // Permite que o front-end converse com a API
 app.use(express.json()); // Ensina a API a entender payloads JSON
 
+// 1.2 Função de Sanitização (DevSecOps - Escudo Anti-XSS no Backend)
+const sanitizeText = (text) => {
+    if (!text) return text;
+    return text.toString().replace(/</g, "&lt;").replace(/>/g, "&gt;");
+};
+
 // 1.5 Defesa Cibernética: Rate Limiter (Escudo Anti-DDoS e Anti-Spam)
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // Janela de 15 minutos
@@ -72,9 +78,13 @@ app.post('/api/contact', apiLimiter, async (req, res) => {
         return res.status(400).json({ erro: 'Todos os campos (nome, email e mensagem) são obrigatórios!' });
     }
 
+    // Sanitiza as entradas antes de salvar e enviar por e-mail
+    const safeName = sanitizeText(name);
+    const safeMessage = sanitizeText(message);
+
     try {
         // NOVO: Salva o contato no Banco de Dados (Backup e Histórico CRM)
-        await Contact.create({ name, email, message });
+        await Contact.create({ name: safeName, email, message: safeMessage });
 
         // Plano B: Enviando e-mail via API HTTP (Resend) para burlar o bloqueio de portas
         const resend = new Resend(process.env.RESEND_API_KEY);
@@ -82,8 +92,8 @@ app.post('/api/contact', apiLimiter, async (req, res) => {
         const { error } = await resend.emails.send({
             from: 'onboarding@resend.dev', // E-mail padrão de teste do Resend
             to: process.env.EMAIL_USER, // O seu e-mail (precisa ser o mesmo cadastrado no Resend)
-            subject: `[Portfólio] Nova mensagem de ${name}`,
-            text: `Nome: ${name}\nE-mail: ${email}\n\nMensagem:\n${message}`
+            subject: `[Portfólio] Nova mensagem de ${safeName}`,
+            text: `Nome: ${safeName}\nE-mail: ${email}\n\nMensagem:\n${safeMessage}`
         });
 
         if (error) {
@@ -113,16 +123,21 @@ app.post('/api/testimonial', apiLimiter, async (req, res) => {
         return res.status(400).json({ erro: 'Todos os campos são obrigatórios!' });
     }
 
+    // Sanitiza as entradas (Escudo Backend)
+    const safeName = sanitizeText(name);
+    const safeRole = sanitizeText(role);
+    const safeMessage = sanitizeText(message);
+
     try {
         // Salva o depoimento no Banco de Dados com status "Pendente"
-        await Testimonial.create({ name, role, message });
+        await Testimonial.create({ name: safeName, role: safeRole, message: safeMessage });
 
         const resend = new Resend(process.env.RESEND_API_KEY);
         const { error } = await resend.emails.send({
             from: 'onboarding@resend.dev',
             to: process.env.EMAIL_USER,
-            subject: `[Portfólio] Novo Depoimento de ${name}`,
-            text: `Nome: ${name}\nCargo: ${role}\n\nDepoimento:\n${message}`
+            subject: `[Portfólio] Novo Depoimento de ${safeName}`,
+            text: `Nome: ${safeName}\nCargo: ${safeRole}\n\nDepoimento:\n${safeMessage}`
         });
 
         if (error) {
