@@ -26,9 +26,15 @@ const apiLimiter = rateLimit({
     legacyHeaders: false, // Desabilita os headers antigos X-RateLimit-*
 });
 
-// 1.8 Conexão com o Banco de Dados (MongoDB)
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('📦 Conectado ao MongoDB com sucesso!'))
+// 1.8 Conexão com o Banco de Dados (MongoDB) - Abordagem Enterprise
+const isTestEnvironment = process.env.NODE_ENV === 'test';
+const mongoConnectionURI = isTestEnvironment ? process.env.MONGO_URI_TEST : process.env.MONGO_URI;
+
+mongoose.connect(mongoConnectionURI)
+    .then(() => {
+        const envName = isTestEnvironment ? 'TESTES 🧪' : 'PRODUÇÃO 🚀';
+        console.log(`📦 Conectado ao MongoDB [Ambiente: ${envName}] com sucesso!`);
+    })
     .catch(err => console.error('❌ Erro ao conectar no MongoDB:', err));
 
 // 1.9 Modelo de Dados (Contrato do Banco)
