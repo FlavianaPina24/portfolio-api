@@ -47,6 +47,9 @@ const testimonialSchema = new mongoose.Schema({
 
 const Testimonial = mongoose.model('Testimonial', testimonialSchema);
 
+// NOVO: Modelo para Depoimentos de Teste (salva em uma collection separada)
+const TestimonialTest = mongoose.model('TestimonialTest', testimonialSchema, 'testimonials_tests');
+
 // 1.10 Modelo de Dados para Contatos (CRM/Backup)
 const contactSchema = new mongoose.Schema({
     name: String,
@@ -136,8 +139,29 @@ app.post('/api/testimonial', apiLimiter, async (req, res) => {
 
     try {
         // Salva o depoimento no Banco de Dados com status "Pendente"
-        await Testimonial.create({ name: safeName, role: safeRole, message: safeMessage });
+        // LÓGICA DE DIRECIONAMENTO (A "Peneira" da Arquiteta)
+        const testKeywords = [
+            'teste', 'qa', 'playwright', 'hacker', 'automação', 'automacao', 'asdf',
+            'flaviana qa', 'teste de automação', 'bot', 'script',
+            'selenium', 'cypress', 'postman', 'swagger',
+            'q.a', 'homologação', 'homologacao', 'testando'
+        ];
+        const isTest = testKeywords.some(keyword =>
+            safeName.toLowerCase().includes(keyword) ||
+            safeRole.toLowerCase().includes(keyword)
+        );
 
+        if (isTest) {
+            // Se for um teste, salva na collection de testes
+            await TestimonialTest.create({ name: safeName, role: safeRole, message: safeMessage });
+            console.log(`🧪 Depoimento de TESTE de '${safeName}' salvo na collection 'testimonials_tests'.`);
+        } else {
+            // Se for real, salva na collection de produção
+            await Testimonial.create({ name: safeName, role: safeRole, message: safeMessage });
+            console.log(`✅ Depoimento REAL de '${safeName}' salvo na collection 'testimonials'.`);
+        }
+
+        // O envio do e-mail de notificação continua funcionando normalmente
         const resend = new Resend(process.env.RESEND_API_KEY);
         const { error } = await resend.emails.send({
             from: 'onboarding@resend.dev',
